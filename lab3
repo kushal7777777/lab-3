@@ -2,7 +2,7 @@
 
 # Function to perform SSH command on remote machine
 ssh_command() {
-    ssh remoteadmin@"$1" "$2"
+    ssh kushal@"$1" "$2"
 }
 
 # Target 1
@@ -31,7 +31,7 @@ echo "$target1_ip loghost" | sudo tee -a /etc/hosts
 echo "$target2_ip webhost" | sudo tee -a /etc/hosts
 
 # Verify Apache and syslog
-if firefox "http://webhost" &>/dev/null && ssh remoteadmin@"$target1_ip" "grep webhost /var/log/syslog"; then
+if firefox "http://webhost" &>/dev/null && ssh kushal@"$target1_ip" "grep webhost /var/log/syslog"; then
     echo "Configuration update succeeded."
 else
     echo "Configuration update failed."
