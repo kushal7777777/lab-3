@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Function to perform SSH command on remote machine
+ssh_command() {
+    ssh remoteadmin@"$1" "$2"
+}
+
+# Target 1
+target1_ip="172.16.1.10"
+ssh_command "$target1_ip" "sudo hostnamectl set-hostname loghost"
+ssh_command "$target1_ip" "sudo ip addr add 192.168.0.3/24 dev eth0"
+ssh_command "$target1_ip" "echo '192.168.0.4 webhost' | sudo tee -a /etc/hosts"
+ssh_command "$target1_ip" "sudo apt update && sudo apt install -y ufw"
+ssh_command "$target1_ip" "sudo ufw allow 514/udp"
+ssh_command "$target1_ip" "sudo sed -i 's/#module(load=\"imudp\")/module(load=\"imudp\")/g' /etc/rsyslog.conf"
+ssh_command "$target1_ip" "sudo sed -i 's/#input(type=\"imudp\"/input(type=\"imudp\"/g' /etc/rsyslog.conf"
+ssh_command "$target1_ip" "sudo systemctl restart rsyslog"
+
+# Target 2
+target2_ip="172.16.1.11"
+ssh_command "$target2_ip" "sudo hostnamectl set-hostname webhost"
+ssh_command "$target2_ip" "sudo ip addr add 192.168.0.4/24 dev eth0"
+ssh_command "$target2_ip" "echo '192.168.0.3 loghost' | sudo tee -a /etc/hosts"
+ssh_command "$target2_ip" "sudo apt update && sudo apt install -y ufw apache2"
+ssh_command "$target2_ip" "sudo ufw allow 80/tcp"
+ssh_command "$target2_ip" "echo '*.* @loghost' | sudo tee -a /etc/rsyslog.conf"
+ssh_command "$target2_ip" "sudo systemctl restart rsyslog"
+
+# Update NMS /etc/hosts
+echo "$target1_ip loghost" | sudo tee -a /etc/hosts
+echo "$target2_ip webhost" | sudo tee -a /etc/hosts
+
+# Verify Apache and syslog
+if firefox "http://webhost" &>/dev/null && ssh remoteadmin@"$target1_ip" "grep webhost /var/log/syslog"; then
+    echo "Configuration update succeeded."
+else
+    echo "Configuration update failed."
+fi
